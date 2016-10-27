@@ -1,6 +1,7 @@
 
 import Immutable from 'immutable'
 import Base64 from '../serializers/base-64'
+import Immutable from 'immutable'
 import Debug from 'debug'
 import React from 'react'
 import ReactDOM from 'react-dom'
