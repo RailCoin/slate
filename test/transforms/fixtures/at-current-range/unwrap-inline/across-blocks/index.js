@@ -2,14 +2,11 @@
 import assert from 'assert'
 
 export default function (state) {
-  const { document, selection } = state
-  const texts = document.getTexts()
-  const first = texts.first()
-  const second = texts.last()
+  const { selection } = state
   const range = selection.merge({
-    anchorKey: first.key,
-    anchorOffset: 2,
-    focusKey: second.key,
+    anchorKey: 'anchor',
+    anchorOffset: 1,
+    focusKey: 'focus',
     focusOffset: 2
   })
 
@@ -19,9 +16,19 @@ export default function (state) {
     .unwrapInline('hashtag')
     .apply()
 
+  // Test selection
+  const { document } = next
+  const first = document.getTexts().first()
+  const last = document.getTexts().last()
+
   assert.deepEqual(
     next.selection.toJS(),
-    range.toJS()
+    range.merge({
+        anchorKey: first.key,
+        anchorOffset: 1,
+        focusKey: last.key,
+        focusOffset: 4
+    }).toJS()
   )
 
   return next

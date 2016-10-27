@@ -1,7 +1,4 @@
-
-import Text from '../models/text'
 import Normalize from '../utils/normalize'
-import uid from '../utils/uid'
 
 /**
  * Add mark to text at `offset` and `length` in node by `key`.
@@ -11,15 +8,25 @@ import uid from '../utils/uid'
  * @param {Number} offset
  * @param {Number} length
  * @param {Mixed} mark
+ * @param {Object} options
+ *   @param {Boolean} normalize
  * @return {Transform}
  */
 
-export function addMarkByKey(transform, key, offset, length, mark) {
+export function addMarkByKey(transform, key, offset, length, mark, options = {}) {
+  const { normalize = true } = options
   mark = Normalize.mark(mark)
   const { state } = transform
   const { document } = state
   const path = document.getPath(key)
-  return transform.addMarkOperation(path, offset, length, mark)
+
+  transform = transform.addMarkOperation(path, offset, length, mark)
+  if (normalize) {
+    const parent = document.getParent(key)
+    transform = transform.normalizeNodeByKey(parent.key)
+  }
+
+  return transform
 }
 
 /**
@@ -29,15 +36,23 @@ export function addMarkByKey(transform, key, offset, length, mark) {
  * @param {String} key
  * @param {Number} index
  * @param {Node} node
+ * @param {Object} options
+ *   @param {Boolean} normalize
  * @return {Transform}
  */
 
-export function insertNodeByKey(transform, key, index, node) {
+export function insertNodeByKey(transform, key, index, node, options = {}) {
+  const { normalize = true } = options
   const { state } = transform
   const { document } = state
   const path = document.getPath(key)
-  const newPath = path.slice().push(index)
-  return transform.insertNodeOperation(path, index, node)
+
+  transform = transform.insertNodeOperation(path, index, node)
+  if (normalize) {
+    transform = transform.normalizeNodeByKey(key)
+  }
+
+  return transform
 }
 
 /**
@@ -48,32 +63,86 @@ export function insertNodeByKey(transform, key, index, node) {
  * @param {Number} offset
  * @param {String} text
  * @param {Set} marks (optional)
+ * @param {Object} options
+ *   @param {Boolean} normalize
  * @return {Transform}
  */
 
-export function insertTextByKey(transform, key, offset, text, marks) {
+export function insertTextByKey(transform, key, offset, text, marks, options = {}) {
+  const { normalize = true } = options
   const { state } = transform
   const { document } = state
   const path = document.getPath(key)
-  return transform.insertTextOperation(path, offset, text, marks)
+
+  transform = transform.insertTextOperation(path, offset, text, marks)
+  if (normalize) {
+    const parent = document.getParent(key)
+    transform = transform.normalizeNodeByKey(parent.key)
+  }
+
+  return transform
 }
 
 /**
- * Move a node by `key` to a new parent by `key` and `index`.
+ * Join a node by `key` with a node `withKey`.
+ *
+ * @param {Transform} transform
+ * @param {String} key
+ * @param {String} withKey
+ * @param {Object} options
+ *   @param {Boolean} normalize
+ * @return {Transform}
+ */
+
+export function joinNodeByKey(transform, key, withKey, options = {}) {
+  const { normalize = true } = options
+  const { state } = transform
+  const { document } = state
+  const path = document.getPath(key)
+  const withPath = document.getPath(withKey)
+
+  transform = transform.joinNodeOperation(path, withPath)
+
+  if (normalize) {
+    const parent = document.getCommonAncestor(key, withKey)
+    if (parent) {
+      transform = transform.normalizeNodeByKey(parent.key)
+    } else {
+      transform = transform.normalizeDocument()
+    }
+  }
+
+  return transform
+}
+
+/**
+ * Move a node by `key` to a new parent by `newKey` and `index`.
+ * `newKey` is the key of the container (it can be the document itself)
  *
  * @param {Transform} transform
  * @param {String} key
  * @param {String} newKey
  * @param {Number} index
+ * @param {Object} options
+ *   @param {Boolean} normalize
  * @return {Transform}
  */
 
-export function moveNodeByKey(transform, key, newKey, newIndex) {
+export function moveNodeByKey(transform, key, newKey, newIndex, options = {}) {
+  const { normalize = true } = options
   const { state } = transform
   const { document } = state
   const path = document.getPath(key)
   const newPath = document.getPath(newKey)
-  return transform.moveNodeOperation(path, newPath, newIndex)
+
+  transform = transform.moveNodeOperation(path, newPath, newIndex)
+
+  if (normalize) {
+    const parent = document.key == newKey ? document : document.getCommonAncestor(key, newKey)
+    transform = transform.normalizeNodeByKey(parent.key)
+  }
+
+  return transform
 }
 
 /**
@@ -84,15 +153,25 @@ export function moveNodeByKey(transform, key, newKey, newIndex) {
  * @param {Number} offset
  * @param {Number} length
  * @param {Mark} mark
+ * @param {Object} options
+ *   @param {Boolean} normalize
  * @return {Transform}
  */
 
-export function removeMarkByKey(transform, key, offset, length, mark) {
+export function removeMarkByKey(transform, key, offset, length, mark, options = {}) {
+  const { normalize = true } = options
   mark = Normalize.mark(mark)
   const { state } = transform
   const { document } = state
   const path = document.getPath(key)
-  return transform.removeMarkOperation(path, offset, length, mark)
+
+  transform = transform.removeMarkOperation(path, offset, length, mark)
+  if (normalize) {
+    const parent = document.getParent(key)
+    transform = transform.normalizeNodeByKey(parent.key)
+  }
+
+  return transform
 }
 
 /**
@@ -100,26 +179,28 @@ export function removeMarkByKey(transform, key, offset, length, mark) {
  *
  * @param {Transform} transform
  * @param {String} key
+ * @param {Object} options
+ *   @param {Boolean} normalize
  * @return {Transform}
  */
 
-export function removeNodeByKey(transform, key) {
+export function removeNodeByKey(transform, key, options = {}) {
+  const { normalize = true } = options
   const { state } = transform
-  const { document } = state
-  const node = document.assertDescendant(key)
-  const parent = document.getParent(key)
-  const index = parent.nodes.indexOf(node)
+  let { document } = state
   const path = document.getPath(key)
-  transform.removeNodeOperation(path)
 
-  // If the node isn't a text node, or it isn't the last node in its parent,
-  // then we have nothing else to do.
-  if (node.kind != 'text' || parent.nodes.size > 1) return transform
+  transform = transform.removeNodeOperation(path)
 
-  // Otherwise, re-add an empty text node into the parent so that we guarantee
-  // to always have text nodes as the leaves of the node tree.
-  const text = Text.create()
-  transform.insertNodeByKey(parent.key, index, text)
+  if (normalize) {
+    const parent = document.getParent(key)
+    if (parent) {
+      transform = transform.normalizeNodeByKey(parent.key)
+    } else {
+      transform = transform.normalizeDocument()
+    }
+  }
+
   return transform
 }
 
@@ -130,14 +211,24 @@ export function removeNodeByKey(transform, key) {
  * @param {String} key
  * @param {Number} offset
  * @param {Number} length
+ * @param {Object} options
+ *   @param {Boolean} normalize
  * @return {Transform}
  */
 
-export function removeTextByKey(transform, key, offset, length) {
+export function removeTextByKey(transform, key, offset, length, options = {}) {
+  const { normalize = true } = options
   const { state } = transform
-  const { document } = state
+  let { document } = state
   const path = document.getPath(key)
-  return transform.removeTextOperation(path, offset, length)
+
+  transform = transform.removeTextOperation(path, offset, length)
+  if (normalize) {
+    const parent = document.getParent(key)
+    transform = transform.normalizeParentsByKey(parent.key)
+  }
+
+  return transform
 }
 
 /**
@@ -148,16 +239,26 @@ export function removeTextByKey(transform, key, offset, length) {
  * @param {Number} offset
  * @param {Number} length
  * @param {Mark} mark
+ * @param {Object} options
+ *   @param {Boolean} normalize
  * @return {Transform}
  */
 
-export function setMarkByKey(transform, key, offset, length, mark, properties) {
+export function setMarkByKey(transform, key, offset, length, mark, properties, options = {}) {
+  const { normalize = true } = options
   mark = Normalize.mark(mark)
   properties = Normalize.markProperties(properties)
   const { state } = transform
   const { document } = state
   const path = document.getPath(key)
-  return transform.setMarkOperation(path, offset, length, mark, properties)
+
+  transform = transform.setMarkOperation(path, offset, length, mark, properties)
+  if (normalize) {
+    const parent = document.getParent(key)
+    transform = transform.normalizeNodeByKey(parent.key)
+  }
+
+  return transform
 }
 
 /**
@@ -166,16 +267,30 @@ export function setMarkByKey(transform, key, offset, length, mark, properties) {
  * @param {Transform} transform
  * @param {String} key
  * @param {Object || String} properties
+ * @param {Object} options
+ *   @param {Boolean} normalize
  * @return {Transform}
  */
 
-export function setNodeByKey(transform, key, properties) {
+export function setNodeByKey(transform, key, properties, options = {}) {
+  const { normalize = true } = options
   properties = Normalize.nodeProperties(properties)
   const { state } = transform
   const { document } = state
-  const node = document.assertDescendant(key)
   const path = document.getPath(key)
-  return transform.setNodeOperation(path, properties)
+
+  transform = transform.setNodeOperation(path, properties)
+
+  if (normalize) {
+    const parent = document.getParent(key)
+    if (parent) {
+      transform = transform.normalizeNodeByKey(parent.key)
+    } else {
+      transform = transform.normalizeDocument()
+    }
+  }
+
+  return transform
 }
 
 /**
@@ -184,14 +299,29 @@ export function setNodeByKey(transform, key, properties) {
  * @param {Transform} transform
  * @param {String} key
  * @param {Number} offset
+ * @param {Object} options
+ *   @param {Boolean} normalize
  * @return {Transform}
  */
 
-export function splitNodeByKey(transform, key, offset) {
-  const { state } = transform
-  const { document } = state
+export function splitNodeByKey(transform, key, offset, options = {}) {
+  const { normalize = true } = options
+  let { state } = transform
+  let { document } = state
   const path = document.getPath(key)
-  return transform.splitNodeOperation(path, offset)
+
+  transform = transform.splitNodeOperation(path, offset)
+
+  if (normalize) {
+    const parent = document.getParent(key)
+    if (parent) {
+      transform = transform.normalizeNodeByKey(parent.key)
+    } else {
+      transform = transform.normalizeDocument()
+    }
+  }
+
+  return transform
 }
 
 /**
@@ -200,16 +330,18 @@ export function splitNodeByKey(transform, key, offset) {
  * @param {Transform} transform
  * @param {String} key
  * @param {Object or String} properties
+ * @param {Object} options
+ *   @param {Boolean} normalize
  * @return {Transform}
  */
 
-export function unwrapInlineByKey(transform, key, properties) {
+export function unwrapInlineByKey(transform, key, properties, options) {
   const { state } = transform
   const { document, selection } = state
   const node = document.assertDescendant(key)
   const texts = node.getTexts()
   const range = selection.moveToRangeOf(texts.first(), texts.last())
-  return transform.unwrapInlineAtRange(range, properties)
+  return transform.unwrapInlineAtRange(range, properties, options)
 }
 
 /**
@@ -218,14 +350,41 @@ export function unwrapInlineByKey(transform, key, properties) {
  * @param {Transform} transform
  * @param {String} key
  * @param {Object or String} properties
+ * @param {Object} options
+ *   @param {Boolean} normalize
  * @return {Transform}
  */
 
-export function unwrapBlockByKey(transform, key, properties) {
+export function unwrapBlockByKey(transform, key, properties, options) {
   const { state } = transform
   const { document, selection } = state
   const node = document.assertDescendant(key)
   const texts = node.getTexts()
   const range = selection.moveToRangeOf(texts.first(), texts.last())
-  return transform.unwrapBlockAtRange(range, properties)
+  return transform.unwrapBlockAtRange(range, properties, options)
+}
+
+/**
+ * Wrap a node in a block with `properties`.
+ *
+ * @param {Transform} transform
+ * @param {String} key The node to wrap
+ * @param {Block || Object || String} block The wrapping block (its children are discarded)
+ * @param {Object} options
+ *   @param {Boolean} normalize
+ * @return {Transform}
+ */
+
+export function wrapBlockByKey(transform, key, block, options) {
+  block = Normalize.block(block)
+  block = block.merge({ nodes: block.nodes.clear() })
+
+  const { document } = transform.state
+  const node = document.assertDescendant(key)
+  const parent = document.getParent(node)
+  const index = parent.nodes.indexOf(node)
+
+  return transform
+    .insertNodeByKey(parent.key, index, block, { normalize: false })
+    .moveNodeByKey(node.key, block.key, 0, options)
 }

@@ -4,9 +4,6 @@ import CorePlugin from '../plugins/core'
 import Debug from 'debug'
 import React from 'react'
 import Schema from '../models/schema'
-import State from '../models/state'
-import isReactComponent from '../utils/is-react-component'
-import typeOf from 'type-of'
 
 /**
  * Debug.
@@ -201,8 +198,6 @@ class Editor extends React.Component {
 
   onChange = (state) => {
     if (state == this.state.state) return
-
-    state = this.onBeforeChange(state)
 
     for (const plugin of this.state.plugins) {
       if (!plugin.onChange) continue

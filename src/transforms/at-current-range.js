@@ -95,70 +95,11 @@ export function _delete(transform) {
 
 export function deleteBackward(transform, n = 1) {
   const { state } = transform
-  const { document, selection } = state
-  let after
-
-  const { startKey } = selection
-  const startNode = document.getDescendant(startKey)
-
-  if (selection.isExpanded) {
-    after = selection.collapseToStart()
-  }
-
-  else if (selection.isAtStartOf(document)) {
-    after = selection
-  }
-
-  else if (selection.isAtStartOf(startNode)) {
-    const previous = document.getPreviousText(startNode)
-    const prevBlock = document.getClosestBlock(previous)
-    const prevInline = document.getClosestInline(previous)
-
-    if (prevBlock && prevBlock.isVoid) {
-      after = selection
-    } else if (prevInline && prevInline.isVoid) {
-      const prevPrev = document.getPreviousText(previous)
-      after = selection.collapseToEndOf(prevPrev)
-    } else {
-      after = selection.collapseToEndOf(previous)
-    }
-  }
-
-  else if (selection.isAtEndOf(startNode) && startNode.length == 1) {
-    const block = document.getClosestBlock(startKey)
-    const highest = block.getHighestChild(startKey)
-    const previous = block.getPreviousSibling(highest)
-    const next = block.getNextSibling(highest)
-
-    if (previous) {
-      if (previous.kind == 'text') {
-        if (next && next.kind == 'text') {
-          after = selection.merge({
-            anchorKey: previous.key,
-            anchorOffset: previous.length,
-            focusKey: previous.key,
-            focusOffset: previous.length
-          })
-        } else {
-          after = selection.collapseToEndOf(previous)
-        }
-      } else {
-        const last = previous.getLastText()
-        after = selection.collapseToEndOf(last)
-      }
-    } else {
-      after = selection.moveBackward(n)
-    }
-  }
-
-  else {
-    after = selection.moveBackward(n)
-  }
+  const { selection } = state
 
   return transform
-    .unsetSelection()
     .deleteBackwardAtRange(selection, n)
-    .moveTo(after)
+    .collapseToEnd()
 }
 
 /**
@@ -171,54 +112,11 @@ export function deleteBackward(transform, n = 1) {
 
 export function deleteForward(transform, n = 1) {
   const { state } = transform
-  const { document, selection, startText } = state
-  const { startKey, startOffset } = selection
-  let after
-
-  const block = document.getClosestBlock(startKey)
-  const inline = document.getClosestInline(startKey)
-  const highest = block.getHighestChild(startKey)
-  const previous = block.getPreviousSibling(highest)
-  const next = block.getNextSibling(highest)
-
-  if (selection.isExpanded) {
-    after = selection.collapseToStart()
-  }
-
-  else if ((block && block.isVoid) || (inline && inline.isVoid)) {
-    const nextText = document.getNextText(startKey)
-    const prevText = document.getPreviousText(startKey)
-    after = next
-      ? selection.collapseToStartOf(nextText)
-      : selection.collapseToEndOf(prevText)
-  }
-
-  else if (previous && startOffset == 0 && startText.length == 1) {
-    if (previous.kind == 'text') {
-      if (next && next.kind == 'text') {
-        after = selection.merge({
-          anchorKey: previous.key,
-          anchorOffset: previous.length,
-          focusKey: previous.key,
-          focusOffset: previous.length
-        })
-      } else {
-        after = selection.collapseToEndOf(previous)
-      }
-    } else {
-      const last = previous.getLastText()
-      after = selection.collapseToEndOf(last)
-    }
-  }
-
-  else {
-    after = selection
-  }
+  const { selection } = state
 
   return transform
-    .unsetSelection()
     .deleteForwardAtRange(selection, n)
-    .moveTo(after)
+    .collapseToEnd()
 }
 
 /**
@@ -433,18 +331,38 @@ export function splitBlock(transform, depth = 1) {
 export function splitInline(transform, depth = Infinity) {
   let { state } = transform
   let { document, selection } = state
+
+  // If the selection is expanded, remove it first.
+  if (selection.isExpanded) {
+    transform.delete()
+    state = transform.state
+    document = state.document
+    selection = state.selection
+  }
+
   let after = selection
+  const { startKey, startOffset } = selection
+  let startNode = document.assertDescendant(startKey)
+  const furthestInline = document.getFurthestInline(startKey)
+  const offset = furthestInline.getOffset(startNode)
+
+  // If the selection is at the start of end of the furthest inline, there isn't
+  // anything to split, so abort.
+  if (
+    (offset + startOffset == 0) ||
+    (offset + startNode.length == startOffset)
+  ) {
+    return transform
+  }
 
   transform.unsetSelection()
   transform.splitInlineAtRange(selection, depth)
   state = transform.state
   document = state.document
+  const closestInline = document.getClosestInline(startKey)
 
-  const { startKey } = selection
-  const inlineParent = document.getClosestInline(startKey)
-
-  if (inlineParent) {
-    const startNode = document.getDescendant(startKey)
+  if (closestInline) {
+    startNode = document.getDescendant(startKey)
     const nextNode = document.getNextText(startNode)
     after = selection.collapseToStartOf(nextNode)
   }
@@ -610,7 +528,7 @@ export function wrapInline(transform, properties) {
 
 export function wrapText(transform, prefix, suffix = prefix) {
   const { state } = transform
-  const { document, selection } = state
+  const { selection } = state
   const { anchorOffset, anchorKey, focusOffset, focusKey, isBackward } = selection
   let after
 

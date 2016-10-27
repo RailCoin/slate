@@ -4,4 +4,10 @@ nodes:
     type: paragraph
     nodes:
       - kind: text
-        text: word
+        key: todelete
+        text: removed
+  - kind: block
+    type: paragraph
+    nodes:
+      - kind: text
+        text: hello

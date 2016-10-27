@@ -15,7 +15,7 @@ import Inline from './inline'
 import Node from './node'
 import Text from './text'
 import uid from '../utils/uid'
-import Immutable, { Map, List, Record } from 'immutable'
+import { Map, List, Record } from 'immutable'
 
 /**
  * Default properties.
@@ -53,7 +53,11 @@ class Block extends new Record(DEFAULTS) {
     properties.isVoid = !!properties.isVoid
     properties.nodes = Block.createList(properties.nodes)
 
-    return new Block(properties).normalize()
+    if (properties.nodes.size == 0) {
+      properties.nodes = properties.nodes.push(Text.create())
+    }
+
+    return new Block(properties)
   }
 
   /**

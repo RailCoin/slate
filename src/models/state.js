@@ -1,10 +1,8 @@
 
 
 import Document from './document'
-import Mark from './mark'
 import Selection from './selection'
 import Transform from './transform'
-import uid from '../utils/uid'
 import { Record, Set, Stack, List } from 'immutable'
 
 /**
@@ -51,7 +49,10 @@ class State extends new Record(DEFAULTS) {
       selection = selection.collapseToStartOf(text)
     }
 
-    return new State({ document, selection })
+    const state = new State({ document, selection })
+    return state.transform()
+      .normalize()
+      .apply({ save: false })
   }
 
   /**
@@ -412,34 +413,6 @@ class State extends new Record(DEFAULTS) {
     return this.selection.isUnset
       ? new List()
       : this.document.getTextsAtRange(this.selection)
-  }
-
-  /**
-   * Normalize a state against a `schema`.
-   *
-   * @param {Schema} schema
-   * @return {State}
-   */
-
-  normalize(schema) {
-    const state = this
-    const { document, selection } = this
-    let transform = this.transform()
-    let failure
-
-    document.filterDescendantsDeep((node) => {
-      if (failure = node.validate(schema)) {
-        const { value, rule } = failure
-        rule.normalize(transform, node, value)
-      }
-    })
-
-    if (failure = document.validate(schema)) {
-      const { value, rule } = failure
-      rule.normalize(transform, document, value)
-    }
-
-    return transform.apply({ save: false })
   }
 
   /**

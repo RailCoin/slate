@@ -34,7 +34,7 @@ class Text extends new Record(DEFAULTS) {
    * Create a new `Text` with `properties`.
    *
    * @param {Object} properties
-   * @return {Text} text
+   * @return {Text}
    */
 
   static create(properties = {}) {
@@ -42,6 +42,24 @@ class Text extends new Record(DEFAULTS) {
     properties.key = properties.key || uid(4)
     properties.characters = Character.createList(properties.characters)
     return new Text(properties)
+  }
+
+  /**
+   * Create a new `Text` from a string
+   *
+   * @param {String} content
+   * @return {Text}
+   */
+
+  static createFromString(content) {
+      return Text.create({
+        characters: Character.createList(
+          content.split('')
+          .map(c => {
+            return { text: c }
+          })
+        )
+      })
   }
 
   /**
@@ -174,7 +192,6 @@ class Text extends new Record(DEFAULTS) {
    */
 
   getRanges(decorators = []) {
-    const node = this
     const list = new List()
     let characters = this.getDecorations(decorators)
 
@@ -223,7 +240,7 @@ class Text extends new Record(DEFAULTS) {
    * @param {Numbder} index
    * @param {String} text
    * @param {String} marks (optional)
-   * @return {Text} text
+   * @return {Text}
    */
 
   insertText(index, text, marks) {
@@ -236,6 +253,16 @@ class Text extends new Record(DEFAULTS) {
       .concat(characters.slice(index))
 
     return this.merge({ characters })
+  }
+
+  /**
+   * Regenerate the node's key.
+   *
+   * @return {Text}
+   */
+
+  regenerateKey() {
+    return this.merge({ key: uid() })
   }
 
   /**
@@ -265,7 +292,7 @@ class Text extends new Record(DEFAULTS) {
    *
    * @param {Number} index
    * @param {Number} length
-   * @return {Text} text
+   * @return {Text}
    */
 
   removeText(index, length) {

@@ -1,19 +1,15 @@
 
 import Block from './block'
 import Character from './character'
-import Data from './data'
 import Document from './document'
-import Inline from './inline'
 import Mark from './mark'
 import Normalize from '../utils/normalize'
-import Selection from './selection'
-import Text from './text'
 import direction from 'direction'
 import isInRange from '../utils/is-in-range'
-import includes from 'lodash/includes'
 import memoize from '../utils/memoize'
 import uid from '../utils/uid'
-import { List, Map, OrderedSet, Set } from 'immutable'
+import { List, Set } from 'immutable'
+
 
 /**
  * Node.
@@ -640,7 +636,6 @@ const Node = {
 
     // If the range is collapsed at the start of the node, check the previous.
     if (range.isCollapsed && startOffset == 0) {
-      const text = this.getDescendant(startKey)
       const previous = this.getPreviousText(startKey)
       if (!previous || !previous.length) return marks
       const char = previous.characters.get(previous.length - 1)
@@ -1025,6 +1020,24 @@ const Node = {
    */
 
   insertNode(index, node) {
+    let keys = new Set([ this.key ])
+
+    this.findDescendant((desc) => {
+      keys = keys.add(desc.key)
+    })
+
+    if (keys.contains(node.key)) {
+      node = node.regenerateKey()
+    }
+
+    if (node.kind != 'text') {
+      node = node.mapDescendants((desc) => {
+        return keys.contains(desc.key)
+          ? desc.regenerateKey()
+          : desc
+      })
+    }
+
     const nodes = this.nodes.splice(index, 0, node)
     return this.merge({ nodes })
   },
@@ -1046,37 +1059,37 @@ const Node = {
   },
 
   /**
-   * Join a node by `key` with another `withKey`.
+   * Join a children node `first` with another children node `second`.
+   * `first` and `second` will be concatenated in that order.
+   * `first` and `second` must be two Nodes or two Text.
    *
-   * @param {String} key
-   * @param {String} withKey
+   * @param {Node} first
+   * @param {Node} second
    * @return {Node}
    */
 
-  joinNode(key, withKey) {
+  joinNode(first, second) {
     let node = this
-    let target = node.assertPath(key)
-    let withTarget = node.assertPath(withKey)
-    let parent = node.getParent(target)
+    let parent = node.getParent(second)
     const isParent = node == parent
-    const index = parent.nodes.indexOf(target)
+    const index = parent.nodes.indexOf(second)
 
-    if (target.kind == 'text') {
-      let { characters } = withTarget
-      characters = characters.concat(target.characters)
-      withTarget = withTarget.merge({ characters })
+    if (second.kind == 'text') {
+      let { characters } = first
+      characters = characters.concat(second.characters)
+      first = first.merge({ characters })
     }
 
     else {
-      const size = withTarget.nodes.size
-      target.nodes.forEach((child, i) => {
-        withTarget = withTarget.insertNode(size + i, child)
+      const size = first.nodes.size
+      second.nodes.forEach((child, i) => {
+        first = first.insertNode(size + i, child)
       })
     }
 
     parent = parent.removeNode(index)
     node = isParent ? parent : node.updateDescendant(parent)
-    node = node.updateDescendant(withTarget)
+    node = node.updateDescendant(first)
     return node
   },
 
@@ -1124,119 +1137,13 @@ const Node = {
   },
 
   /**
-   * Normalize the node by joining any two adjacent text child nodes.
+   * Regenerate the node's key.
    *
    * @return {Node} node
    */
 
-  normalize() {
-    let node = this
-    let keys = new Set()
-    let removals = new Set()
-
-    // Map this node's descendants, ensuring...
-    node = node.mapDescendants((desc) => {
-      if (removals.has(desc.key)) return desc
-
-      // ...that there are no duplicate keys.
-      if (keys.has(desc.key)) desc = desc.set('key', uid())
-      keys = keys.add(desc.key)
-
-      // ...that void nodes contain a single space of content.
-      if (desc.isVoid && desc.text != ' ') {
-        desc = desc.merge({
-          nodes: Text.createList([{
-            characters: Character.createList([{ text: ' ' }])
-          }])
-        })
-      }
-
-      // ...that no block or inline has no text node inside it.
-      if (desc.kind != 'text' && desc.nodes.size == 0) {
-        const text = Text.create()
-        const nodes = desc.nodes.push(text)
-        desc = desc.merge({ nodes })
-      }
-
-      // ...that no inline node is empty.
-      if (desc.kind == 'inline' && desc.text == '') {
-        removals = removals.add(desc.key)
-      }
-
-      return desc
-    })
-
-    // Remove any nodes marked for removal.
-    removals.forEach((key) => {
-      node = node.removeDescendant(key)
-    })
-
-    removals = removals.clear()
-
-    // And, ensuring...
-    node = node.mapDescendants((desc) => {
-      if (desc.kind == 'text') {
-        let next = node.getNextSibling(desc)
-
-        // ...that there are no adjacent text nodes.
-        if (next && next.kind == 'text') {
-          while (next && next.kind == 'text') {
-            const characters = desc.characters.concat(next.characters)
-            desc = desc.merge({ characters })
-            removals = removals.add(next.key)
-            next = node.getNextSibling(next)
-          }
-        }
-
-        // ...that there are no extra empty text nodes.
-        else if (desc.length == 0) {
-          const parent = node.getParent(desc)
-          if (!removals.has(parent.key) && parent.nodes.size > 1) {
-            removals = removals.add(desc.key)
-          }
-        }
-      }
-
-      return desc
-    })
-
-    // Remove any nodes marked for removal.
-    removals.forEach((key) => {
-      node = node.removeDescendant(key)
-    })
-
-    // Ensure that void nodes are surrounded by text nodes
-    node = node.mapDescendants((desc) => {
-        if (desc.kind == 'text') {
-            return desc
-        }
-
-        const nodes = desc.nodes.reduce((accu, child, i) => {
-            // We wrap only inline void nodes
-            if (!child.isVoid || child.kind === 'block') {
-                return accu.push(child)
-            }
-
-            const prev = accu.last()
-            const next = desc.nodes.get(i + 1)
-
-            if (!prev || prev.kind !== 'text') {
-                accu = accu.push(Text.create())
-            }
-
-            accu = accu.push(child)
-
-            if (!next || next.kind !== 'text') {
-                accu = accu.push(Text.create())
-            }
-
-            return accu
-        }, List())
-
-        return desc.merge({ nodes })
-    })
-
-    return node
+  regenerateKey() {
+    return this.merge({ key: uid() })
   },
 
   /**
@@ -1314,8 +1221,8 @@ const Node = {
         const { nodes } = child
         const oneNodes = nodes.takeUntil(n => n.key == one.key).push(one)
         const twoNodes = nodes.skipUntil(n => n.key == one.key).rest().unshift(two)
-        one = child.merge({ nodes: oneNodes }).normalize()
-        two = child.merge({ nodes: twoNodes, key: uid() }).normalize()
+        one = child.merge({ nodes: oneNodes })
+        two = child.merge({ nodes: twoNodes, key: uid() })
       }
 
       child = base.getParent(child)
@@ -1353,7 +1260,6 @@ const Node = {
 
     const path = base.getPath(node.key)
     return this.splitNode(path, offset)
-      .normalize()
   },
 
   /**
