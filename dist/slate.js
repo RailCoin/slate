@@ -33388,7 +33388,7 @@ function isNonEditable(event) {
 
 exports.default = Content;
 
-},{"../constants/environment":149,"../constants/types":150,"../models/selection":160,"../serializers/base-64":166,"../utils/offset-key":185,"../utils/transfer":188,"./node":146,"debug":26,"get-window":55,"keycode":70}],144:[function(require,module,exports){
+},{"../constants/environment":149,"../constants/types":150,"../models/selection":160,"../serializers/base-64":166,"../utils/offset-key":186,"../utils/transfer":189,"./node":146,"debug":26,"get-window":55,"keycode":70}],144:[function(require,module,exports){
 'use strict';
 
 Object.defineProperty(exports, "__esModule", {
@@ -34300,7 +34300,7 @@ function findDeepestNode(element) {
 
 exports.default = Leaf;
 
-},{"../utils/offset-key":185,"debug":26,"get-window":55}],146:[function(require,module,exports){
+},{"../utils/offset-key":186,"debug":26,"get-window":55}],146:[function(require,module,exports){
 'use strict';
 
 Object.defineProperty(exports, "__esModule", {
@@ -34346,6 +34346,10 @@ var _scrollTo2 = _interopRequireDefault(_scrollTo);
 var _warning = require('../utils/warning');
 
 var _warning2 = _interopRequireDefault(_warning);
+
+var _isDev = require('../utils/is-dev');
+
+var _isDev2 = _interopRequireDefault(_isDev);
 
 function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
 
@@ -34415,7 +34419,7 @@ var Node = function (_React$Component) {
   /**
    * Should the node update?
    *
-   * @param {Object} props
+   * @param {Object} nextProps
    * @param {Object} state
    * @return {Boolean}
    */
@@ -34520,7 +34524,7 @@ var _initialiseProps = function _initialiseProps() {
     _this2.setState({ Component: Component });
   };
 
-  this.shouldComponentUpdate = function (props) {
+  this.shouldComponentUpdate = function (nextProps) {
     var Component = _this2.state.Component;
 
     // If the node is rendered with a `Component` that has enabled suppression
@@ -34532,39 +34536,42 @@ var _initialiseProps = function _initialiseProps() {
     }
 
     // If the node has changed, update.
-    if (props.node != _this2.props.node) {
-      if (!_immutable2.default.is(props.node, _this2.props.node)) {
+    if (nextProps.node != _this2.props.node) {
+      if (!(0, _isDev2.default)() || !_immutable2.default.is(nextProps.node, _this2.props.node)) {
         return true;
       } else {
-        (0, _warning2.default)('Encountered different references for identical node values in "shouldComponentUpdate". Check that you are preserving references for the following node:\n', props.node);
+        (0, _warning2.default)('Encountered different references for identical node values in "shouldComponentUpdate". Check that you are preserving references for the following node:\n', nextProps.node);
       }
     }
 
+    var nextHasEdgeIn = nextProps.state.selection.hasEdgeIn(nextProps.node);
+
     // If the selection is focused and is inside the node, we need to update so
     // that the selection will be set by one of the <Leaf> components.
-    if (props.state.isFocused && props.state.selection.hasEdgeIn(props.node)) {
+    if (nextProps.state.isFocused && nextHasEdgeIn) {
       return true;
     }
 
-    // If the selection is blurred but was previously focused inside the node,
+    var hasEdgeIn = _this2.props.state.selection.hasEdgeIn(nextProps.node);
+    // If the selection is blurred but was previously focused (or vice versa) inside the node,
     // we need to update to ensure the selection gets updated by re-rendering.
-    if (props.state.isBlurred && _this2.props.state.isFocused && _this2.props.state.selection.hasEdgeIn(props.node)) {
+    if (_this2.props.state.isFocused != nextProps.state.isFocused && (hasEdgeIn || nextHasEdgeIn)) {
       return true;
     }
 
     // For block and inline nodes, which can have custom renderers, we need to
     // include another check for whether the previous selection had an edge in
     // the node, to allow for intuitive selection-based rendering.
-    if (_this2.props.node.kind != 'text' && (props.state.isFocused != _this2.props.state.isFocused || _this2.props.state.selection.hasEdgeIn(_this2.props.node) != props.state.selection.hasEdgeIn(props.node))) {
+    if (_this2.props.node.kind != 'text' && hasEdgeIn != nextHasEdgeIn) {
       return true;
     }
 
     // For text nodes, which can have custom decorations, we need to check to
     // see if the block has changed, which has caused the decorations to change.
-    if (props.node.kind == 'text') {
-      var node = props.node;
-      var schema = props.schema;
-      var state = props.state;
+    if (nextProps.node.kind == 'text') {
+      var node = nextProps.node;
+      var schema = nextProps.schema;
+      var state = nextProps.state;
       var document = state.document;
 
       var decorators = document.getDescendantDecorators(node.key, schema);
@@ -34737,7 +34744,7 @@ var _initialiseProps = function _initialiseProps() {
 
 exports.default = Node;
 
-},{"../constants/types":150,"../serializers/base-64":166,"../utils/scroll-to":186,"../utils/warning":190,"./leaf":145,"./void":148,"debug":26}],147:[function(require,module,exports){
+},{"../constants/types":150,"../serializers/base-64":166,"../utils/is-dev":181,"../utils/scroll-to":187,"../utils/warning":191,"./leaf":145,"./void":148,"debug":26}],147:[function(require,module,exports){
 'use strict';
 
 Object.defineProperty(exports, "__esModule", {
@@ -35071,7 +35078,7 @@ Void.propTypes = {
 };
 exports.default = Void;
 
-},{"../constants/environment":149,"../models/mark":157,"../utils/offset-key":185,"./leaf":145}],149:[function(require,module,exports){
+},{"../constants/environment":149,"../models/mark":157,"../utils/offset-key":186,"./leaf":145}],149:[function(require,module,exports){
 (function (process){
 'use strict';
 
@@ -35478,7 +35485,7 @@ for (var method in _node2.default) {
 
 exports.default = Block;
 
-},{"../utils/uid":189,"./data":154,"./document":155,"./inline":156,"./node":158,"./text":162}],153:[function(require,module,exports){
+},{"../utils/uid":190,"./data":154,"./document":155,"./inline":156,"./node":158,"./text":162}],153:[function(require,module,exports){
 'use strict';
 
 Object.defineProperty(exports, "__esModule", {
@@ -35790,7 +35797,7 @@ for (var method in _node2.default) {
 
 exports.default = Document;
 
-},{"../utils/uid":189,"./block":152,"./inline":156,"./node":158}],156:[function(require,module,exports){
+},{"../utils/uid":190,"./block":152,"./inline":156,"./node":158}],156:[function(require,module,exports){
 'use strict';
 
 Object.defineProperty(exports, "__esModule", {
@@ -35979,7 +35986,7 @@ for (var method in _node2.default) {
 
 exports.default = Inline;
 
-},{"../utils/uid":189,"./block":152,"./data":154,"./document":155,"./node":158,"./text":162}],157:[function(require,module,exports){
+},{"../utils/uid":190,"./block":152,"./data":154,"./document":155,"./node":158,"./text":162}],157:[function(require,module,exports){
 'use strict';
 
 Object.defineProperty(exports, "__esModule", {
@@ -36107,7 +36114,7 @@ var Mark = function (_ref) {
 
 exports.default = Mark;
 
-},{"../utils/memoize":183,"./data":154}],158:[function(require,module,exports){
+},{"../utils/memoize":184,"./data":154}],158:[function(require,module,exports){
 'use strict';
 
 Object.defineProperty(exports, "__esModule", {
@@ -36724,14 +36731,13 @@ var Node = {
    */
 
   getFurthest: function getFurthest(key, iterator) {
-    var node = this.assertDescendant(key);
-    var furthest = null;
-
-    while (node = this.getClosest(node, iterator)) {
-      furthest = node;
+    var ancestors = this.getAncestors(key);
+    if (!ancestors) {
+      throw new Error('Could not find a descendant node with key "' + key + '".');
     }
 
-    return furthest;
+    // Exclude this node itself
+    return ancestors.rest().find(iterator);
   },
 
 
@@ -37472,9 +37478,14 @@ var Node = {
         var _child2 = child;
         var nodes = _child2.nodes;
 
+        // Try to preserve the nodes list to preserve reference of one == node to avoid re-render
+        // When spliting at the end of a text node, the first node is preserved
+
         var oneNodes = nodes.takeUntil(function (n) {
           return n.key == one.key;
-        }).push(one);
+        });
+        oneNodes = oneNodes.size == nodes.size - 1 && one == nodes.last() ? nodes : oneNodes.push(one);
+
         var twoNodes = nodes.skipUntil(function (n) {
           return n.key == one.key;
         }).rest().unshift(two);
@@ -37548,18 +37559,6 @@ var Node = {
     } else {
       return result;
     }
-  },
-
-
-  /**
-   * Validate the node against a `schema`.
-   *
-   * @param {Schema} schema
-   * @return {Object || Void}
-   */
-
-  validate: function validate(schema) {
-    return schema.__validate(this);
   }
 };
 
@@ -37567,7 +37566,7 @@ var Node = {
  * Memoize read methods.
  */
 
-(0, _memoize2.default)(Node, ['assertChild', 'assertDescendant', 'filterDescendants', 'filterDescendantsDeep', 'findDescendant', 'findDescendantDeep', 'getAncestors', 'getBlocks', 'getBlocksAtRange', 'getCharactersAtRange', 'getChild', 'getChildrenAfter', 'getChildrenAfterIncluding', 'getChildrenBefore', 'getChildrenBeforeIncluding', 'getChildrenBetween', 'getChildrenBetweenIncluding', 'getClosest', 'getClosestBlock', 'getClosestInline', 'getComponent', 'getDecorators', 'getDepth', 'getDescendant', 'getDescendantDecorators', 'getFirstText', 'getFragmentAtRange', 'getFurthest', 'getFurthestBlock', 'getFurthestInline', 'getHighestChild', 'getHighestOnlyChildParent', 'getInlinesAtRange', 'getLastText', 'getMarksAtRange', 'getNextBlock', 'getNextSibling', 'getNextText', 'getOffset', 'getOffsetAtRange', 'getParent', 'getPreviousBlock', 'getPreviousSibling', 'getPreviousText', 'getTextAtOffset', 'getTextDirection', 'getTexts', 'getTextsAtRange', 'hasChild', 'hasDescendant', 'hasVoidParent', 'isInlineSplitAtRange', 'validate']);
+(0, _memoize2.default)(Node, ['assertChild', 'assertDescendant', 'getAncestors', 'getBlocks', 'getBlocksAtRange', 'getCharactersAtRange', 'getChild', 'getChildrenAfter', 'getChildrenAfterIncluding', 'getChildrenBefore', 'getChildrenBeforeIncluding', 'getChildrenBetween', 'getChildrenBetweenIncluding', 'getClosestBlock', 'getClosestInline', 'getComponent', 'getDecorators', 'getDepth', 'getDescendant', 'getDescendantAtPath', 'getDescendantDecorators', 'getFirstText', 'getFragmentAtRange', 'getFurthestBlock', 'getFurthestInline', 'getHighestChild', 'getHighestOnlyChildParent', 'getInlinesAtRange', 'getLastText', 'getMarksAtRange', 'getNextBlock', 'getNextSibling', 'getNextText', 'getOffset', 'getOffsetAtRange', 'getParent', 'getPreviousBlock', 'getPreviousSibling', 'getPreviousText', 'getTextAtOffset', 'getTextDirection', 'getTexts', 'getTextsAtRange', 'hasChild', 'hasDescendant', 'hasVoidParent', 'isInlineSplitAtRange']);
 
 /**
  * Export.
@@ -37575,7 +37574,7 @@ var Node = {
 
 exports.default = Node;
 
-},{"../utils/is-in-range":181,"../utils/memoize":183,"../utils/normalize":184,"../utils/uid":189,"./block":152,"./character":153,"./document":155,"./mark":157,"direction":30}],159:[function(require,module,exports){
+},{"../utils/is-in-range":182,"../utils/memoize":184,"../utils/normalize":185,"../utils/uid":190,"./block":152,"./character":153,"./document":155,"./mark":157,"direction":30}],159:[function(require,module,exports){
 'use strict';
 
 Object.defineProperty(exports, "__esModule", {
@@ -37887,7 +37886,7 @@ function normalizeMarkComponent(render) {
 
 exports.default = Schema;
 
-},{"../utils/is-react-component":182,"type-of":139}],160:[function(require,module,exports){
+},{"../utils/is-react-component":183,"type-of":139}],160:[function(require,module,exports){
 'use strict';
 
 Object.defineProperty(exports, "__esModule", {
@@ -38727,12 +38726,14 @@ EDGE_METHODS.forEach(function (pattern) {
 
 exports.default = Selection;
 
-},{"../utils/get-leaf-text":180,"../utils/memoize":183,"../utils/warning":190}],161:[function(require,module,exports){
+},{"../utils/get-leaf-text":180,"../utils/memoize":184,"../utils/warning":191}],161:[function(require,module,exports){
 'use strict';
 
 Object.defineProperty(exports, "__esModule", {
   value: true
 });
+
+var _extends = Object.assign || function (target) { for (var i = 1; i < arguments.length; i++) { var source = arguments[i]; for (var key in source) { if (Object.prototype.hasOwnProperty.call(source, key)) { target[key] = source[key]; } } } return target; };
 
 var _createClass = function () { function defineProperties(target, props) { for (var i = 0; i < props.length; i++) { var descriptor = props[i]; descriptor.enumerable = descriptor.enumerable || false; descriptor.configurable = true; if ("value" in descriptor) descriptor.writable = true; Object.defineProperty(target, descriptor.key, descriptor); } } return function (Constructor, protoProps, staticProps) { if (protoProps) defineProperties(Constructor.prototype, protoProps); if (staticProps) defineProperties(Constructor, staticProps); return Constructor; }; }();
 
@@ -38798,12 +38799,17 @@ var State = function (_ref) {
     /**
      * Return a new `Transform` with the current state as a starting point.
      *
+     * @param {Object} properties
      * @return {Transform} transform
      */
 
     value: function transform() {
+      var properties = arguments.length > 0 && arguments[0] !== undefined ? arguments[0] : {};
+
       var state = this;
-      return new _transform2.default({ state: state });
+      return new _transform2.default(_extends({}, properties, {
+        state: state
+      }));
     }
   }, {
     key: 'kind',
@@ -39251,7 +39257,7 @@ var State = function (_ref) {
       }
 
       var state = new State({ document: document, selection: selection });
-      return state.transform().normalize().apply({ save: false });
+      return state.transform({ normalized: false }).normalize().apply({ save: false });
     }
   }]);
 
@@ -39604,19 +39610,6 @@ var Text = function (_ref) {
 
       return this.merge({ characters: characters });
     }
-
-    /**
-     * Validate the node against a `schema`.
-     *
-     * @param {Schema} schema
-     * @return {Object || Void}
-     */
-
-  }, {
-    key: 'validate',
-    value: function validate(schema) {
-      return schema.__validate(this);
-    }
   }, {
     key: 'kind',
 
@@ -39729,7 +39722,7 @@ var Text = function (_ref) {
  * Memoize read methods.
  */
 
-(0, _memoize2.default)(Text.prototype, ['getDecorations', 'getDecorators', 'getRanges', 'validate']);
+(0, _memoize2.default)(Text.prototype, ['getDecorations', 'getDecorators', 'getRanges']);
 
 /**
  * Export.
@@ -39737,7 +39730,7 @@ var Text = function (_ref) {
 
 exports.default = Text;
 
-},{"../utils/memoize":183,"../utils/uid":189,"./character":153,"./mark":157}],163:[function(require,module,exports){
+},{"../utils/memoize":184,"../utils/uid":190,"./character":153,"./mark":157}],163:[function(require,module,exports){
 'use strict';
 
 Object.defineProperty(exports, "__esModule", {
@@ -39778,14 +39771,19 @@ var Transform = function () {
    * Constructor.
    *
    * @param {Object} properties
+   *   @param {State} properties.state
+   *   @param {Boolean} properties.normalized
    */
 
   function Transform(properties) {
     _classCallCheck(this, Transform);
 
     var state = properties.state;
+    var _properties$normalize = properties.normalized;
+    var normalized = _properties$normalize === undefined ? true : _properties$normalize;
 
     this.state = state;
+    this.prevState = normalized ? state : null;
     this.operations = [];
   }
 
@@ -40036,10 +40034,20 @@ function Plugin() {
    */
 
   function onBeforeChange(state, editor) {
+    // Don't normalize with plugins schema when typing text in native mode
     if (state.isNative) return state;
-    var schema = editor.getSchema();
 
-    return state.transform().normalizeWith(schema).apply({ save: false });
+    var schema = editor.getSchema();
+    var prevState = editor.state.state;
+
+    // Since schema can only normalize the document, we avoid creating
+    // a transform and normalize the selection if the document is the same
+
+    if (prevState && state.document == prevState.document) return state;
+
+    var newState = state.transform().normalizeWith(schema, prevState ? prevState.document : null).apply({ save: false });
+
+    return newState;
   }
 
   /**
@@ -40621,7 +40629,8 @@ function Plugin() {
 
     return state.transform().moveTo(selection)
     // Since the document has not changed, We only normalize the selection
-    .normalizeSelection().apply({ normalize: false });
+    // This is done in transform.apply
+    .apply();
   }
 
   /**
@@ -40705,7 +40714,7 @@ function Plugin() {
 
 exports.default = Plugin;
 
-},{"../components/placeholder":147,"../constants/environment":149,"../models/character":153,"../serializers/base-64":166,"../utils/string":187,"debug":26,"get-window":55}],165:[function(require,module,exports){
+},{"../components/placeholder":147,"../constants/environment":149,"../models/character":153,"../serializers/base-64":166,"../utils/string":188,"debug":26,"get-window":55}],165:[function(require,module,exports){
 'use strict';
 
 Object.defineProperty(exports, "__esModule", {
@@ -42863,7 +42872,7 @@ function splitNode(state, operation) {
   return state;
 }
 
-},{"../utils/warning":190,"debug":26}],171:[function(require,module,exports){
+},{"../utils/warning":191,"debug":26}],171:[function(require,module,exports){
 'use strict';
 
 Object.defineProperty(exports, "__esModule", {
@@ -43457,7 +43466,7 @@ function wrapText(transform, prefix) {
   return transform.unsetSelection().wrapTextAtRange(selection, prefix, suffix).moveTo(after);
 }
 
-},{"../utils/normalize":184}],172:[function(require,module,exports){
+},{"../utils/normalize":185}],172:[function(require,module,exports){
 'use strict';
 
 Object.defineProperty(exports, "__esModule", {
@@ -43647,18 +43656,17 @@ function deleteBackwardAtRange(transform, range) {
   var startKey = _range.startKey;
   var focusOffset = _range.focusOffset;
 
-  var text = document.getDescendant(startKey);
-  var block = document.getClosestBlock(startKey);
-  var inline = document.getClosestInline(startKey);
 
   if (range.isExpanded) {
     return transform.deleteAtRange(range, { normalize: normalize });
   }
 
+  var block = document.getClosestBlock(startKey);
   if (block && block.isVoid) {
     return transform.removeNodeByKey(block.key, { normalize: normalize });
   }
 
+  var inline = document.getClosestInline(startKey);
   if (inline && inline.isVoid) {
     return transform.removeNodeByKey(inline.key, { normalize: normalize });
   }
@@ -43667,6 +43675,7 @@ function deleteBackwardAtRange(transform, range) {
     return transform;
   }
 
+  var text = document.getDescendant(startKey);
   if (range.isAtStartOf(text)) {
     var prev = document.getPreviousText(text);
     var prevBlock = document.getClosestBlock(prev);
@@ -43718,18 +43727,17 @@ function deleteForwardAtRange(transform, range) {
   var startKey = _range2.startKey;
   var focusOffset = _range2.focusOffset;
 
-  var text = document.getDescendant(startKey);
-  var inline = document.getClosestInline(startKey);
-  var block = document.getClosestBlock(startKey);
 
   if (range.isExpanded) {
     return transform.deleteAtRange(range, { normalize: normalize });
   }
 
+  var block = document.getClosestBlock(startKey);
   if (block && block.isVoid) {
     return transform.removeNodeByKey(block.key, { normalize: normalize });
   }
 
+  var inline = document.getClosestInline(startKey);
   if (inline && inline.isVoid) {
     return transform.removeNodeByKey(inline.key, { normalize: normalize });
   }
@@ -43738,6 +43746,7 @@ function deleteForwardAtRange(transform, range) {
     return transform;
   }
 
+  var text = document.getDescendant(startKey);
   if (range.isAtEndOf(text)) {
     var next = document.getNextText(text);
     var nextBlock = document.getClosestBlock(next);
@@ -44635,7 +44644,7 @@ function wrapTextAtRange(transform, range, prefix) {
   return transform;
 }
 
-},{"../utils/normalize":184}],173:[function(require,module,exports){
+},{"../utils/normalize":185}],173:[function(require,module,exports){
 'use strict';
 
 Object.defineProperty(exports, "__esModule", {
@@ -45102,7 +45111,7 @@ function wrapBlockByKey(transform, key, block, options) {
   return transform.insertNodeByKey(parent.key, index, block, { normalize: false }).moveNodeByKey(node.key, block.key, 0, options);
 }
 
-},{"../utils/normalize":184}],174:[function(require,module,exports){
+},{"../utils/normalize":185}],174:[function(require,module,exports){
 'use strict';
 
 Object.defineProperty(exports, "__esModule", {
@@ -45333,6 +45342,9 @@ var _schema2 = _interopRequireDefault(_schema);
 
 function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
 
+// Maximum recursive calls for normalization
+var MAX_CALLS = 50;
+
 /**
  * Refresh a reference to a node that have been modified in a transform.
  * @param  {Transform} transform
@@ -45357,16 +45369,18 @@ function _refreshNode(transform, node) {
  * @param  {Transform} transform
  * @param  {Schema} schema
  * @param  {Node} node
+ * @param  {Node} prevNode
  * @return {Transform} transform
  */
 
-function _normalizeChildrenWith(transform, schema, node) {
+function _normalizeChildrenWith(transform, schema, node, prevNode) {
   if (!node.nodes) {
     return transform;
   }
 
   return node.nodes.reduce(function (t, child) {
-    return t.normalizeNodeWith(schema, child);
+    var prevChild = prevNode ? prevNode.getChild(child) : null;
+    return t.normalizeNodeWith(schema, child, prevChild);
   }, transform);
 }
 
@@ -45379,29 +45393,41 @@ function _normalizeChildrenWith(transform, schema, node) {
  */
 
 function _normalizeNodeWith(transform, schema, node) {
-  var failure = schema.__validate(node);
+  var recursiveCount = 0;
 
-  // Node is valid?
-  if (!failure) {
-    return transform;
+  // Auxiliary function, called recursively, with a maximum calls safety net.
+  function _recur(_transform, _node) {
+    var failure = schema.__validate(_node);
+
+    // Node is valid?
+    if (!failure) {
+      return _transform;
+    }
+
+    var value = failure.value;
+    var rule = failure.rule;
+
+    // Normalize and get the new state
+
+    _transform = rule.normalize(_transform, _node, value);
+
+    // Search for the updated node in the new state
+    var newNode = _refreshNode(_transform, _node);
+
+    // Node no longer exist, go back to normalize parents
+    if (!newNode) {
+      return _transform;
+    }
+
+    recursiveCount++;
+    if (recursiveCount > MAX_CALLS) {
+      throw new Error('Unexpected number of successive normalizations. Aborting.');
+    }
+
+    return _recur(_transform, newNode);
   }
 
-  var value = failure.value;
-  var rule = failure.rule;
-
-  // Normalize and get the new state
-
-  transform = rule.normalize(transform, node, value);
-
-  // Search for the updated node in the new state
-  var newNode = _refreshNode(transform, node);
-
-  // Node no longer exist, go back to normalize parents
-  if (!newNode) {
-    return transform;
-  }
-
-  return _normalizeNodeWith(transform, schema, newNode);
+  return _recur(transform, node);
 }
 
 /**
@@ -45410,16 +45436,29 @@ function _normalizeNodeWith(transform, schema, node) {
  * @param  {Transform} transform
  * @param  {Schema} schema
  * @param  {Node} node
+ * @param  {Node} prevNode
  * @return {Transform}
  */
 
-function normalizeNodeWith(transform, schema, node) {
-  // console.log(`normalize node key=${node.key}`)
-  // Iterate over its children
-  transform = _normalizeChildrenWith(transform, schema, node);
+function normalizeNodeWith(transform, schema, node, prevNode) {
+  // Node has not changed
+  if (prevNode == node) {
+    return transform;
+  }
 
-  // Refresh the node reference, and normalize it
-  node = _refreshNode(transform, node);
+  // For performance considerations, we will check if the transform was changed
+  var opCount = transform.operations.length;
+
+  // Iterate over its children
+  transform = _normalizeChildrenWith(transform, schema, node, prevNode);
+
+  var hasChanged = transform.operations.length != opCount;
+  if (hasChanged) {
+    // Refresh the node reference
+    node = _refreshNode(transform, node);
+  }
+
+  // Now normalize the node itself if it still exist
   if (node) {
     transform = _normalizeNodeWith(transform, schema, node);
   }
@@ -45450,8 +45489,8 @@ function normalizeParentsWith(transform, schema, node) {
     return transform;
   }
 
-  var _transform = transform;
-  var state = _transform.state;
+  var _transform2 = transform;
+  var state = _transform2.state;
   var document = state.document;
 
   var parent = document.getParent(node.key);
@@ -45464,20 +45503,21 @@ function normalizeParentsWith(transform, schema, node) {
  *
  * @param  {Transform} transform
  * @param  {Schema} schema
+ * @param  {Document} prevDocument
  * @return {Transform} transform
  */
 
-function normalizeWith(transform, schema) {
+function normalizeWith(transform, schema, prevDocument) {
   var state = transform.state;
   var document = state.document;
 
-  // Schema was not rule to edit the document
 
   if (!schema.isNormalization) {
+    // Schema has no normalization rules
     return transform;
   }
 
-  return transform.normalizeNodeWith(schema, document);
+  return transform.normalizeNodeWith(schema, document, prevDocument);
 }
 
 /**
@@ -45488,7 +45528,8 @@ function normalizeWith(transform, schema) {
  */
 
 function normalize(transform) {
-  return transform.normalizeDocument().normalizeSelection();
+  transform = transform.normalizeDocument().normalizeSelection();
+  return transform;
 }
 
 /**
@@ -45499,7 +45540,14 @@ function normalize(transform) {
  */
 
 function normalizeDocument(transform) {
-  return transform.normalizeWith(_schema2.default);
+  var prevState = transform.prevState;
+
+  var _ref = prevState || {};
+
+  var prevDocument = _ref.document;
+
+
+  return transform.normalizeWith(_schema2.default, prevDocument);
 }
 
 /**
@@ -45511,12 +45559,21 @@ function normalizeDocument(transform) {
  */
 
 function normalizeNodeByKey(transform, key) {
-  var state = transform.state;
+  var _transform3 = transform;
+  var state = _transform3.state;
+  var prevState = _transform3.prevState;
   var document = state.document;
 
-  var node = document.key == key ? document : document.assertDescendant(key);
+  var _ref2 = prevState || {};
 
-  return transform.normalizeNodeWith(_schema2.default, node);
+  var prevDocument = _ref2.document;
+
+
+  var node = document.key == key ? document : document.assertDescendant(key);
+  var prevNode = document.key == key ? prevDocument : prevDocument.getDescendant(key);
+
+  transform = transform.normalizeNodeWith(_schema2.default, node, prevNode);
+  return transform;
 }
 
 /**
@@ -45528,12 +45585,20 @@ function normalizeNodeByKey(transform, key) {
  */
 
 function normalizeParentsByKey(transform, key) {
-  var state = transform.state;
+  var _transform4 = transform;
+  var state = _transform4.state;
+  var prevState = _transform4.prevState;
   var document = state.document;
 
-  var node = document.key == key ? document : document.assertDescendant(key);
+  var _ref3 = prevState || {};
 
-  return transform.normalizeParentsWith(_schema2.default, node);
+  var prevDocument = _ref3.document;
+
+  var node = document.key == key ? document : document.assertDescendant(key);
+  var prevNode = document.key == key ? prevDocument : prevDocument.getDescendant(key);
+
+  transform = transform.normalizeParentsWith(_schema2.default, node, prevNode);
+  return transform;
 }
 
 /**
@@ -45569,7 +45634,7 @@ function normalizeSelection(transform) {
   return transform;
 }
 
-},{"../plugins/schema":165,"../utils/warning":190}],176:[function(require,module,exports){
+},{"../plugins/schema":165,"../utils/warning":191}],176:[function(require,module,exports){
 "use strict";
 
 Object.defineProperty(exports, "__esModule", {
@@ -46675,7 +46740,7 @@ function splitNodeOperation(transform, path, offset) {
   return transform.applyOperation(operation);
 }
 
-},{"../utils/normalize":184}],179:[function(require,module,exports){
+},{"../utils/normalize":185}],179:[function(require,module,exports){
 "use strict";
 
 Object.defineProperty(exports, "__esModule", {
@@ -46737,6 +46802,26 @@ function getLeafText(node) {
 exports.default = getLeafText;
 
 },{}],181:[function(require,module,exports){
+(function (process){
+'use strict';
+
+Object.defineProperty(exports, "__esModule", {
+  value: true
+});
+exports.default = isDev;
+var __DEV__ = typeof process !== 'undefined' && process.env && "production" !== 'production';
+
+/**
+ * Return true if running slate in development
+ * @return {Boolean} dev
+ */
+
+function isDev() {
+  return __DEV__;
+}
+
+}).call(this,require('_process'))
+},{"_process":125}],182:[function(require,module,exports){
 "use strict";
 
 Object.defineProperty(exports, "__esModule", {
@@ -46778,7 +46863,7 @@ function isInRange(index, text, range) {
 
 exports.default = isInRange;
 
-},{}],182:[function(require,module,exports){
+},{}],183:[function(require,module,exports){
 "use strict";
 
 Object.defineProperty(exports, "__esModule", {
@@ -46804,7 +46889,7 @@ function isReactComponent(object) {
 
 exports.default = isReactComponent;
 
-},{}],183:[function(require,module,exports){
+},{}],184:[function(require,module,exports){
 'use strict';
 
 Object.defineProperty(exports, "__esModule", {
@@ -46822,6 +46907,14 @@ var _immutable = (window.Immutable);
  */
 
 var LEAF = {};
+
+/**
+ * An unique value used to detect cache misses
+ *
+ * @type {Object}
+ */
+
+var NO_SET = {};
 
 /**
  * Memoize all of the `properties` on a `object`.
@@ -46854,7 +46947,10 @@ function memoize(object, properties) {
         var keys = [property].concat(args, [LEAF]);
         var cache = this.__cache = this.__cache || new _immutable.Map();
 
-        if (cache.hasIn(keys)) return cache.getIn(keys);
+        var cachedValue = cache.getIn(keys, NO_SET);
+        if (cachedValue !== NO_SET) {
+          return cachedValue;
+        }
 
         var value = original.apply(this, args);
         this.__cache = cache.setIn(keys, value);
@@ -46887,7 +46983,7 @@ function memoize(object, properties) {
 
 exports.default = memoize;
 
-},{}],184:[function(require,module,exports){
+},{}],185:[function(require,module,exports){
 'use strict';
 
 Object.defineProperty(exports, "__esModule", {
@@ -47164,7 +47260,7 @@ exports.default = {
   selectionProperties: selectionProperties
 };
 
-},{"../models/block":152,"../models/data":154,"../models/document":155,"../models/inline":156,"../models/mark":157,"../models/selection":160,"../models/text":162,"type-of":139}],185:[function(require,module,exports){
+},{"../models/block":152,"../models/data":154,"../models/document":155,"../models/inline":156,"../models/mark":157,"../models/selection":160,"../models/text":162,"type-of":139}],186:[function(require,module,exports){
 'use strict';
 
 Object.defineProperty(exports, "__esModule", {
@@ -47348,7 +47444,7 @@ exports.default = {
   stringify: stringify
 };
 
-},{}],186:[function(require,module,exports){
+},{}],187:[function(require,module,exports){
 'use strict';
 
 Object.defineProperty(exports, "__esModule", {
@@ -47425,7 +47521,7 @@ function scrollTo(element, options) {
 
 exports.default = scrollTo;
 
-},{"get-window":55}],187:[function(require,module,exports){
+},{"get-window":55}],188:[function(require,module,exports){
 'use strict';
 
 Object.defineProperty(exports, "__esModule", {
@@ -47639,7 +47735,7 @@ exports.default = {
   getWordOffsetForward: getWordOffsetForward
 };
 
-},{"esrever":52}],188:[function(require,module,exports){
+},{"esrever":52}],189:[function(require,module,exports){
 'use strict';
 
 Object.defineProperty(exports, "__esModule", {
@@ -47944,7 +48040,7 @@ var Transfer = function () {
 
 exports.default = Transfer;
 
-},{"../constants/types":150,"../serializers/base-64":166}],189:[function(require,module,exports){
+},{"../constants/types":150,"../serializers/base-64":166}],190:[function(require,module,exports){
 'use strict';
 
 Object.defineProperty(exports, "__esModule", {
@@ -47973,15 +48069,19 @@ function uid() {
 
 exports.default = uid;
 
-},{"uid":141}],190:[function(require,module,exports){
-(function (process){
+},{"uid":141}],191:[function(require,module,exports){
 'use strict';
 
 Object.defineProperty(exports, "__esModule", {
   value: true
 });
 exports.default = warning;
-var __DEV__ = typeof process !== 'undefined' && process.env && "production" !== 'production';
+
+var _isDev = require('./is-dev');
+
+var _isDev2 = _interopRequireDefault(_isDev);
+
+function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
 
 /**
  * Log a development warning.
@@ -47989,7 +48089,7 @@ var __DEV__ = typeof process !== 'undefined' && process.env && "production" !== 
  */
 
 function warning(message) {
-  if (!__DEV__) {
+  if (!(0, _isDev2.default)()) {
     return;
   }
 
@@ -48013,6 +48113,5 @@ function warning(message) {
   }
 }
 
-}).call(this,require('_process'))
-},{"_process":125}]},{},[151])(151)
+},{"./is-dev":181}]},{},[151])(151)
 });
