@@ -42,12 +42,21 @@ function Plugin(options = {}) {
    */
 
   function onBeforeChange(state, editor) {
+    // Don't normalize with plugins schema when typing text in native mode
     if (state.isNative) return state
-    const schema = editor.getSchema()
 
-    return state.transform()
-      .normalizeWith(schema)
+    const schema = editor.getSchema()
+    const { state: prevState } = editor.state
+
+    // Since schema can only normalize the document, we avoid creating
+    // a transform and normalize the selection if the document is the same
+    if (prevState && state.document == prevState.document) return state
+
+    const newState = state.transform()
+      .normalizeWith(schema, prevState ? prevState.document : null)
       .apply({ save: false })
+
+    return newState
   }
 
   /**
@@ -681,8 +690,8 @@ function Plugin(options = {}) {
       .transform()
       .moveTo(selection)
       // Since the document has not changed, We only normalize the selection
-      .normalizeSelection()
-      .apply({ normalize: false })
+      // This is done in transform.apply
+      .apply()
   }
 
   /**

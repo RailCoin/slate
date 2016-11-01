@@ -1,8 +1,4 @@
-const __DEV__ = (
-  typeof process !== 'undefined' &&
-  process.env &&
-  process.env.NODE_ENV !== 'production'
-)
+import isDev from './is-dev'
 
 /**
  * Log a development warning.
@@ -10,7 +6,7 @@ const __DEV__ = (
  */
 
 export default function warning(message, ...more) {
-  if (!__DEV__) {
+  if (!isDev()) {
     return
   }
 
@@ -19,11 +15,11 @@ export default function warning(message, ...more) {
   }
 
   try {
-      // --- Welcome to debugging Slate ---
-      // This error was thrown as a convenience so that you can use this stack
-      // to find the callsite that caused this warning to fire.
-      throw new Error(message)
-    } catch (x) {
-        // This error is only for debugging
-    }
+    // --- Welcome to debugging Slate ---
+    // This error was thrown as a convenience so that you can use this stack
+    // to find the callsite that caused this warning to fire.
+    throw new Error(message)
+  } catch (x) {
+    // This error is only for debugging
+  }
 }

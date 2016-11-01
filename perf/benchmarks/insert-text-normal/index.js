@@ -13,6 +13,6 @@ module.exports = {
   },
 
   run(state) {
-    return state.transform().splitBlock().apply()
+    return state.transform().insertText('a').apply()
   }
 }

@@ -524,14 +524,13 @@ const Node = {
    */
 
   getFurthest(key, iterator) {
-    let node = this.assertDescendant(key)
-    let furthest = null
-
-    while (node = this.getClosest(node, iterator)) {
-      furthest = node
+    let ancestors = this.getAncestors(key)
+    if (!ancestors) {
+      throw new Error(`Could not find a descendant node with key "${key}".`)
     }
 
-    return furthest
+    // Exclude this node itself
+    return ancestors.rest().find(iterator)
   },
 
   /**
@@ -1219,7 +1218,12 @@ const Node = {
 
       else {
         const { nodes } = child
-        const oneNodes = nodes.takeUntil(n => n.key == one.key).push(one)
+
+        // Try to preserve the nodes list to preserve reference of one == node to avoid re-render
+        // When spliting at the end of a text node, the first node is preserved
+        let oneNodes = nodes.takeUntil(n => n.key == one.key)
+        oneNodes = (oneNodes.size == (nodes.size - 1) && one == nodes.last()) ? nodes : oneNodes.push(one)
+
         const twoNodes = nodes.skipUntil(n => n.key == one.key).rest().unshift(two)
         one = child.merge({ nodes: oneNodes })
         two = child.merge({ nodes: twoNodes, key: uid() })
@@ -1286,19 +1290,7 @@ const Node = {
     } else {
       return result
     }
-  },
-
-  /**
-   * Validate the node against a `schema`.
-   *
-   * @param {Schema} schema
-   * @return {Object || Void}
-   */
-
-  validate(schema) {
-    return schema.__validate(this)
   }
-
 }
 
 /**
@@ -1308,10 +1300,6 @@ const Node = {
 memoize(Node, [
   'assertChild',
   'assertDescendant',
-  'filterDescendants',
-  'filterDescendantsDeep',
-  'findDescendant',
-  'findDescendantDeep',
   'getAncestors',
   'getBlocks',
   'getBlocksAtRange',
@@ -1323,17 +1311,16 @@ memoize(Node, [
   'getChildrenBeforeIncluding',
   'getChildrenBetween',
   'getChildrenBetweenIncluding',
-  'getClosest',
   'getClosestBlock',
   'getClosestInline',
   'getComponent',
   'getDecorators',
   'getDepth',
   'getDescendant',
+  'getDescendantAtPath',
   'getDescendantDecorators',
   'getFirstText',
   'getFragmentAtRange',
-  'getFurthest',
   'getFurthestBlock',
   'getFurthestInline',
   'getHighestChild',
@@ -1357,8 +1344,7 @@ memoize(Node, [
   'hasChild',
   'hasDescendant',
   'hasVoidParent',
-  'isInlineSplitAtRange',
-  'validate'
+  'isInlineSplitAtRange'
 ])
 
 /**
